@@ -24,32 +24,32 @@ SEED = 595
 set_seed(SEED)
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
-tokenizer = AutoTokenizer.from_pretrained('bert-base-multilingual-uncased')
-model = AutoModelForQuestionAnswering.from_pretrained("bert-base-multilingual-uncased")
+tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased') ## 
+model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
 
 
 S_lang2file = {
-    'en' : 'tydiqa.en.train.json',
-    'fi' : 'tydiqa.fi.train.json',
-    'ar' : 'tydiqa.ar.train.json',
-    'bn' : 'tydiqa.bn.train.json',
-    'id' : 'tydiqa.id.train.json',
-    'ko' : 'tydiqa.ko.train.json',
-    'ru' : 'tydiqa.ru.train.json',
-    'sw' : 'tydiqa.sw.train.json',
-    'te' : 'tydiqa.te.train.json',
+    'en' : 'tydiqa.en.train.json'#,
+    # 'fi' : 'tydiqa.fi.train.json',
+    # 'ar' : 'tydiqa.ar.train.json',
+    # 'bn' : 'tydiqa.bn.train.json',
+    # 'id' : 'tydiqa.id.train.json',
+    # 'ko' : 'tydiqa.ko.train.json',
+    # 'ru' : 'tydiqa.ru.train.json',
+    # 'sw' : 'tydiqa.sw.train.json',
+    # 'te' : 'tydiqa.te.train.json',
 }
 
 T_lang2file = {
-    'en' : 'tydiqa.en.dev.json',
-    'fi' : 'tydiqa.fi.dev.json',
-    'ar' : 'tydiqa.ar.dev.json',
-    'bn' : 'tydiqa.bn.dev.json',
-    'id' : 'tydiqa.id.dev.json',
-    'ko' : 'tydiqa.ko.dev.json',
-    'ru' : 'tydiqa.ru.dev.json',
-    'sw' : 'tydiqa.sw.dev.json',
-    'te' : 'tydiqa.te.dev.json',
+    'en' : 'tydiqa.en.dev.json'#,
+    # 'fi' : 'tydiqa.fi.dev.json',
+    # 'ar' : 'tydiqa.ar.dev.json',
+    # 'bn' : 'tydiqa.bn.dev.json',
+    # 'id' : 'tydiqa.id.dev.json',
+    # 'ko' : 'tydiqa.ko.dev.json',
+    # 'ru' : 'tydiqa.ru.dev.json',
+    # 'sw' : 'tydiqa.sw.dev.json',
+    # 'te' : 'tydiqa.te.dev.json',
 }
 
 accuracy_dict = {} # for storing all the test accuracies in the form { (S,T,SHOT) , Acc }
@@ -88,7 +88,7 @@ def read_data(path):
     return contexts, questions, answers, id
 
 def get_s_data(S,T,SHOT):
-    s_path = path + 'tydiqa-goldp-v1.1-train/' + S_lang2file[S]
+    s_path = path + S_lang2file[S]
     s_context, s_q, s_a, s_i = read_data(s_path)
     s_tydi = []
     for _ in range(len(s_a)):
@@ -98,7 +98,7 @@ def get_s_data(S,T,SHOT):
         s_tydi[_]['question'] = s_q[_]
         s_tydi[_]['id'] = s_i[_]
     if SHOT>0:
-        few_shot_path = path + 'tydiqa-goldp-v1.1-train/' + S_lang2file[T]
+        few_shot_path = path + S_lang2file[T]
         fs_context, fs_q, fs_a, fs_i = read_data(few_shot_path)
         for _ in range(SHOT):
             s_tydi.append({})
@@ -161,7 +161,7 @@ def preprocess_training_examples(examples):
 
 
 def get_t_data(T):
-    t_path = path + 'tydiqa-goldp-v1.1-dev/' + T_lang2file[T]
+    t_path = path + T_lang2file[T]
     t_context, t_q, t_a, t_i = read_data(t_path)
     t_tydi = []
     for _ in range(len(t_a)):
@@ -247,7 +247,7 @@ def compute_metrics(start_logits, end_logits, features, examples):
 
 def model_train(tr_data, te_data):
     data_collator = DefaultDataCollator()
-    model = AutoModelForQuestionAnswering.from_pretrained("bert-base-multilingual-uncased")
+    model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
     training_args = TrainingArguments(
         output_dir='QA_OP',
         evaluation_strategy="epoch",
@@ -267,92 +267,92 @@ def model_train(tr_data, te_data):
     return trainer
 
 
-### FOR LEXICAL SIMILARITY
+# ### FOR LEXICAL SIMILARITY
 
-def tokenize_sentences(sentences):
-    tokenized_sentences = []
-    for sentence in sentences:
-        tokenized_sentence = tokenizer.tokenize(sentence.lower(), return_tensors='pt')
-        tokenized_sentences.extend([token for token in tokenized_sentence])
-    return tokenized_sentences
+# def tokenize_sentences(sentences):
+#     tokenized_sentences = []
+#     for sentence in sentences:
+#         tokenized_sentence = tokenizer.tokenize(sentence.lower(), return_tensors='pt')
+#         tokenized_sentences.extend([token for token in tokenized_sentence])
+#     return tokenized_sentences
 
-def generate_ngrams(tokens, n):
-    return list(ngrams(tokens, n))
+# def generate_ngrams(tokens, n):
+#     return list(ngrams(tokens, n))
 
-def compute_ngram_freq(ngram_list):
-    ngram_freq = Counter(ngram_list)
-    total_ngrams = sum(ngram_freq.values())
-    ngram_prob = {ngram: freq / total_ngrams for ngram, freq in ngram_freq.items()}
-    return ngram_prob
+# def compute_ngram_freq(ngram_list):
+#     ngram_freq = Counter(ngram_list)
+#     total_ngrams = sum(ngram_freq.values())
+#     ngram_prob = {ngram: freq / total_ngrams for ngram, freq in ngram_freq.items()}
+#     return ngram_prob
 
-jsd_dict = {}
+# jsd_dict = {}
 
-for S in S_lang2file.keys(): # S_lang2file.keys()
-    for T in T_lang2file.keys(): # T_lang2file.keys()
+# for S in S_lang2file.keys(): # S_lang2file.keys()
+#     for T in T_lang2file.keys(): # T_lang2file.keys()
 
-        # if S==T:
-        #     continue
+#         # if S==T:
+#         #     continue
         
-        s_data = get_s_data(S,T,SHOT)
-        t_data = get_s_data(T,T,SHOT)
+#         s_data = get_s_data(S,T,SHOT)
+#         t_data = get_s_data(T,T,SHOT)
 
-        corpus1_sentences = s_data['context']
-        corpus2_sentences = t_data['context']
+#         corpus1_sentences = s_data['context']
+#         corpus2_sentences = t_data['context']
 
-        # Tokenize sentences in each corpus into tokens using the BERT tokenizer
-        corpus1_tokens = tokenize_sentences(corpus1_sentences)
-        corpus2_tokens = tokenize_sentences(corpus2_sentences)
+#         # Tokenize sentences in each corpus into tokens using the BERT tokenizer
+#         corpus1_tokens = tokenize_sentences(corpus1_sentences)
+#         corpus2_tokens = tokenize_sentences(corpus2_sentences)
 
-        # Generate 3-grams for both corpora
-        n = 3  # Change n to the desired n-gram size
-        corpus1_3grams = generate_ngrams(corpus1_tokens, n)
-        corpus2_3grams = generate_ngrams(corpus2_tokens, n)
+#         # Generate 3-grams for both corpora
+#         n = 3  # Change n to the desired n-gram size
+#         corpus1_3grams = generate_ngrams(corpus1_tokens, n)
+#         corpus2_3grams = generate_ngrams(corpus2_tokens, n)
 
-        # Compute n-gram probabilities for each corpus
-        corpus1_ngram_prob = compute_ngram_freq(corpus1_3grams)
-        corpus2_ngram_prob = compute_ngram_freq(corpus2_3grams)
+#         # Compute n-gram probabilities for each corpus
+#         corpus1_ngram_prob = compute_ngram_freq(corpus1_3grams)
+#         corpus2_ngram_prob = compute_ngram_freq(corpus2_3grams)
 
-        # Convert dictionaries to lists of probabilities
-        corpus1_prob_list = list(corpus1_ngram_prob.values())
-        corpus2_prob_list = list(corpus2_ngram_prob.values())
+#         # Convert dictionaries to lists of probabilities
+#         corpus1_prob_list = list(corpus1_ngram_prob.values())
+#         corpus2_prob_list = list(corpus2_ngram_prob.values())
 
-        # Calculate Jensen-Shannon Divergence using scipy's jensenshannon function
-        min_len = min(len(corpus1_prob_list), len(corpus2_prob_list))
-        s = corpus1_prob_list[:min_len]
-        t = corpus2_prob_list[:min_len]
-        jsd_result = jensenshannon(s, t) / np.sqrt(2)
-        print(f"Jensen-Shannon Divergence between {S} , {T} : {jsd_result}")        
-        jsd_dict[(S,T)] = jsd_result
+#         # Calculate Jensen-Shannon Divergence using scipy's jensenshannon function
+#         min_len = min(len(corpus1_prob_list), len(corpus2_prob_list))
+#         s = corpus1_prob_list[:min_len]
+#         t = corpus2_prob_list[:min_len]
+#         jsd_result = jensenshannon(s, t) / np.sqrt(2)
+#         print(f"Jensen-Shannon Divergence between {S} , {T} : {jsd_result}")        
+#         jsd_dict[(S,T)] = jsd_result
 
-jsd_dict
-with open("tydiqa_lex.txt", "w") as fp:
-    print(jsd_dict, file=fp)
+# jsd_dict
+# with open("tydiqa_lex.txt", "w") as fp:
+#     print(jsd_dict, file=fp)
 
-### LEXICAL SIMILARITY ENDS
+# ### LEXICAL SIMILARITY ENDS
 
-### FOR LM feature
-
-
-for T in T_lang2file.keys(): # T_lang2file.keys(T)
-   t_data = get_t_data(T)
-   validation_dataset = t_data.map(preprocess_validation_examples, batched=True, remove_columns=t_data.column_names)
-   eval_set_for_model = validation_dataset.remove_columns(["example_id", "offset_mapping"])
-   eval_set_for_model.set_format('torch')
-   batch = {k: eval_set_for_model[k] for k in eval_set_for_model.column_names}
-   model = AutoModelForQuestionAnswering.from_pretrained("bert-base-multilingual-uncased")
-   with torch.no_grad():
-       outputs = model(**batch)
-   start_logits = outputs.start_logits.cpu().numpy()
-   end_logits = outputs.end_logits.cpu().numpy()
-   f = compute_metrics(start_logits, end_logits, validation_dataset, t_data)
-   init_acc_dict[T] = f
-   print(init_acc_dict)
-
-with open("Init_Acc_QA.txt", "w") as fp:
-   json.dump(init_acc_dict, fp)
+# ### FOR LM feature
 
 
-### LM Feature ENDS
+# for T in T_lang2file.keys(): # T_lang2file.keys(T)
+#    t_data = get_t_data(T)
+#    validation_dataset = t_data.map(preprocess_validation_examples, batched=True, remove_columns=t_data.column_names)
+#    eval_set_for_model = validation_dataset.remove_columns(["example_id", "offset_mapping"])
+#    eval_set_for_model.set_format('torch')
+#    batch = {k: eval_set_for_model[k] for k in eval_set_for_model.column_names}
+#    model = AutoModelForQuestionAnswering.from_pretrained("bert-base-multilingual-uncased")
+#    with torch.no_grad():
+#        outputs = model(**batch)
+#    start_logits = outputs.start_logits.cpu().numpy()
+#    end_logits = outputs.end_logits.cpu().numpy()
+#    f = compute_metrics(start_logits, end_logits, validation_dataset, t_data)
+#    init_acc_dict[T] = f
+#    print(init_acc_dict)
+
+# with open("Init_Acc_QA.txt", "w") as fp:
+#    json.dump(init_acc_dict, fp)
+
+
+# ### LM Feature ENDS
 
 ### MODEL TRAINING
 
