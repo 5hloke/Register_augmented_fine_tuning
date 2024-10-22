@@ -25,22 +25,26 @@ encoder.layer.0.output.LayerNorm.bias torch.Size([768])
 '''
 # Attention
 
-class RegBert(torch.nn.Module):
-    
-    def __init__(self, num_register = 10, model_path ='bert-base-uncased.pth', device = 'mps'): 
-        super(RegBert, self).__init__()
-        self.num_register = num_register
-        self.reg_tokens = nn.Parameter(torch.zeros(self.num_register, 768)).to(device)
-        self.reg_pos = nn.Parameter(torch.zeros(self.num_register, 768)).to(device)
-        model_name = 'bert-base-uncased'
-        self.encoder = AutoModelForQuestionAnswering.from_pretrained(model_name).to(device)
-        self.device = device
-    
-    def forward(self, input_ids, attention_mask, token_type_ids):
-        pass
+'''
+BertModel - > RegBert
+BertLayer - > Block 
+BertEncoder -> RegBertEncoder
 
-reg_bert = RegBert()
-        
+'''
+class RegBert(BertModel):
+    def __init__(self, config, num_registers=10, device='mps'):
+        super(RegBert, self).__init__(config)
+        self.config = config
+        self.reg_tokens = nn.Parameter(torch.zeros(num_registers, 768))
+        self.reg_pos = nn.Parameter(torch.zeros(num_registers, 768))
+
+    def forward(self, x):
+        pass
     
+model = RegBert.from_pretrained('bert-base-uncased')
+print(model.config)
+for name in model.state_dict().keys():
+    print(name)
+
 # Block
 # Feed Forward
