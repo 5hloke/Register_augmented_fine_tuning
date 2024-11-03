@@ -32,15 +32,6 @@ BertEncoder -> RegBertEncoder
 
 '''
 
-class Encoder(nn.Module):
-    def __init__(self, config): 
-        super().__init__()
-        self.config =config
-        self.layer = nn.ModuleList([BertLayer(config) for _ in range(config.num_hidden_layers)])
-        self.gradient_checkpointing = False 
-    
-    def forward(self): 
-        pass
 class RegBert(BertModel):
     def __init__(self, config, num_registers=10, device='mps'):
         super().__init__(config)
@@ -48,10 +39,16 @@ class RegBert(BertModel):
         self.reg_tokens = nn.Parameter(torch.zeros(1, num_registers, 768))
         self.reg_pos = nn.Parameter(torch.zeros(1, num_registers, 768))
         self.device = device
-        self.encoder = Encoder(self.config)
         self.add = Add()
         trunc_normal_(self.reg_tokens, std=.02)
         trunc_normal_(self.reg_pos, std=.02)
+    
+    def init_reg_weights(self):
+        '''
+        self.reg_encoder <- self.encoder(bert Model)
+        self.reg_layer <- self.encoder.layer(bert Layer)
+        self.reg_attention <- self.encoder.layer.attention(bert Attention)
+        '''
 
 
     def forward(self, input_ids: Optional[torch.Tensor] = None,
@@ -101,6 +98,8 @@ class RegBert(BertModel):
         encoder_extended_attention_mask = None
         head_mask = None
 
+        # Manually xompute attention save the attn mask hook - Bert self attenion
+
 
 
 
@@ -113,6 +112,7 @@ class RegBert(BertModel):
 
     
 model = RegBert.from_pretrained('bert-base-uncased')
+# model.init_reg_weights()
 print(model.config)
 for name in model.state_dict().keys():
     print(name)
