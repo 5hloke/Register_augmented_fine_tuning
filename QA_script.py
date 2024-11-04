@@ -3,6 +3,9 @@ import random
 from datasets import Dataset
 import torch
 from transformers import AutoTokenizer, AutoModelForQuestionAnswering, DefaultDataCollator, TrainingArguments, Trainer
+
+from model import RegBert
+
 from tqdm.auto import tqdm
 import numpy as np
 import evaluate
@@ -25,11 +28,12 @@ set_seed(SEED)
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 
 tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased') ## 
-model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
+# model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
+model= RegBert.from_pretrained('bert-base-uncased')
 
 
 S_lang2file = {
-    'en' : 'tydiqa.en.train.json'#,
+    'en' : 'TyDiQA English Data/tydiqa.en.train.json'#,
     # 'fi' : 'tydiqa.fi.train.json',
     # 'ar' : 'tydiqa.ar.train.json',
     # 'bn' : 'tydiqa.bn.train.json',
@@ -41,7 +45,7 @@ S_lang2file = {
 }
 
 T_lang2file = {
-    'en' : 'tydiqa.en.dev.json'#,
+    'en' : 'TyDiQA English Data/tydiqa.en.dev.json'#,
     # 'fi' : 'tydiqa.fi.dev.json',
     # 'ar' : 'tydiqa.ar.dev.json',
     # 'bn' : 'tydiqa.bn.dev.json',
@@ -60,7 +64,7 @@ init_acc_dict = {}
 
 SHOT = 0
 
-max_length = 384
+max_length = 434
 stride = 128
 
 path = ""
@@ -247,7 +251,7 @@ def compute_metrics(start_logits, end_logits, features, examples):
 
 def model_train(tr_data, te_data):
     data_collator = DefaultDataCollator()
-    model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
+    model = RegBert.from_pretrained("bert-base-uncased") ##
     training_args = TrainingArguments(
         output_dir='QA_OP',
         evaluation_strategy="epoch",
@@ -260,7 +264,6 @@ def model_train(tr_data, te_data):
         args=training_args,
         train_dataset=tr_data,
         eval_dataset=te_data,
-        tokenizer=tokenizer,
         data_collator=data_collator,
     )
     trainer.train()
