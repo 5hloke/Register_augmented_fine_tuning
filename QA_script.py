@@ -4,7 +4,7 @@ from datasets import Dataset
 import torch
 from transformers import AutoTokenizer, AutoModelForQuestionAnswering, DefaultDataCollator, TrainingArguments, Trainer
 
-from model import RegBert
+from model import RegBertForQA
 
 from tqdm.auto import tqdm
 import numpy as np
@@ -29,7 +29,7 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 
 tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased') ## 
 # model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
-model= RegBert.from_pretrained('bert-base-uncased')
+model= RegBertForQA.from_pretrained('bert-base-uncased')
 
 
 S_lang2file = {
@@ -251,7 +251,7 @@ def compute_metrics(start_logits, end_logits, features, examples):
 
 def model_train(tr_data, te_data):
     data_collator = DefaultDataCollator()
-    model = RegBert.from_pretrained("bert-base-uncased") ##
+    model = RegBertForQA.from_pretrained("bert-base-uncased") ##
     training_args = TrainingArguments(
         output_dir='QA_OP',
         evaluation_strategy="epoch",
