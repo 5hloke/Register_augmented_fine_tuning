@@ -286,7 +286,7 @@ class RegBert(BertModel):
         
         # Here are the positional embeddings + word embeddings + token type embeddings
         input_embeds = self.embeddings(input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds)
-        print("Forwarding")
+        # print("Forwarding")
         register = self.reg_tokens.expand(batch_size, -1, -1)
         register = torch.add(register, self.reg_pos)
         embedding_output = torch.cat((register, input_embeds), dim=1)
@@ -306,7 +306,7 @@ class RegBert(BertModel):
             inverted_mask = 1.0 - expanded_mask
             return inverted_mask.masked_fill(inverted_mask.bool(), torch.finfo(dtype).min)
         extended_attention_mask = prepare_mask(attention_mask, embedding_output.dtype, seq_length+50)
-        print(extended_attention_mask.shape)
+        # print(extended_attention_mask.shape)
         encoder_extended_attention_mask = None
         head_mask = None
 
@@ -326,7 +326,7 @@ class RegBert(BertModel):
         
         sequence_output = encoder_outputs[0]
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
-        print(f"Return Dict: {return_dict}, seq = {sequence_output.shape}, pooled: {pooled_output.shape}")
+        # print(f"Return Dict: {return_dict}, seq = {sequence_output.shape}, pooled: {pooled_output.shape}")
         if not return_dict:
             return (sequence_output, pooled_output) + encoder_outputs[self.num_registers:]
 
@@ -401,12 +401,22 @@ class RegBertForQA(BertForQuestionAnswering):
             return_dict=return_dict,
         )
 
+        # print('outputs[0]',outputs[0].shape)
+
         sequence_output = outputs[0]
 
         logits = self.qa_outputs(sequence_output)
+        # print('logits: ',logits.shape)
         start_logits, end_logits = logits.split(1, dim=-1)
         start_logits = start_logits.squeeze(-1).contiguous()
         end_logits = end_logits.squeeze(-1).contiguous()
+
+        start_logits = start_logits[:, self.bert.num_registers:]
+        end_logits = end_logits[:, self.bert.num_registers:]
+
+        # print('start_logits: ',start_logits.shape)
+        # print('end_logits: ', end_logits.shape)
+        # print('start_positions: ',start_positions.shape)
 
         total_loss = None
         if start_positions is not None and end_positions is not None:

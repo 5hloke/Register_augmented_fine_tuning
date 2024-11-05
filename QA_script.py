@@ -372,6 +372,7 @@ for S in S_lang2file.keys(): # S_lang2file.keys()
         train_counter = train_counter + 1
         predictions, _, _ = trainer.predict(validation_dataset)
         start_logits, end_logits = predictions
+        print('start_logits Pred: ',start_logits.shape)
         f1 = compute_metrics(start_logits, end_logits, validation_dataset, t_data)
         accuracy_dict[(S,T,SHOT)] = f1
 
