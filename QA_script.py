@@ -251,6 +251,7 @@ def compute_metrics(start_logits, end_logits, features, examples):
 
 def model_train(tr_data, te_data):
     data_collator = DefaultDataCollator()
+    # model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
     model = RegBertForQA.from_pretrained("bert-base-uncased") ##
     training_args = TrainingArguments(
         output_dir='QA_OP',

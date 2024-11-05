@@ -1,7 +1,7 @@
 import torch
 import numpy as np 
 import torch.nn as nn
-from transformers.models.bert.modeling_bert import BertModel, BertLayer, BertSelfAttention, BaseModelOutputWithPoolingAndCrossAttentions, QuestionAnsweringModelOutput
+from transformers.models.bert.modeling_bert import BertModel, BertLayer, BertSelfAttention, BaseModelOutputWithPoolingAndCrossAttentions, QuestionAnsweringModelOutput, BertForQuestionAnswering
 import math
 from typing import List, Optional, Tuple, Union
 import warnings
@@ -254,6 +254,8 @@ class RegBert(BertModel):
             # new_attention.load_state_dict(l2)
             new_attention.load_state_dict(l.attention.self.state_dict())
             l.attention.self = new_attention
+
+
     def forward(
         self,
         input_ids: Optional[torch.Tensor] = None,
@@ -270,7 +272,7 @@ class RegBert(BertModel):
         output_hidden_states: Optional[bool] = None,
         return_dict: Optional[bool] = None):
 
-        ones = torch.ones((8,self.num_registers)).to(self.dev)
+        ones = torch.ones((attention_mask.shape[0], self.num_registers)).to(self.dev)
         attention_mask = torch.cat((ones, attention_mask), dim =1)
         batch_size, seq_length = input_ids.size()
         input_shape = input_ids.size()
@@ -348,13 +350,14 @@ class RegBert(BertModel):
         
 
 
-class RegBertForQA(RegBert):
+class RegBertForQA(BertForQuestionAnswering):
 
     def __init__(self, config):
         super().__init__(config)
         self.num_labels = config.num_labels
 
-        self.bert = RegBert(config)
+        # self.bert = RegBert(config)
+        self.bert = RegBert.from_pretrained('bert-base-uncased')
         self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
 
         # Initialize weights and apply final processing
@@ -446,7 +449,7 @@ class RegBertForQA(RegBert):
 
 
     
-model = RegBert.from_pretrained('bert-base-uncased')
+# model = RegBert.from_pretrained('bert-base-uncased')
 # model.init_reg_weights()
 # print(model.config)
 # for name, value in model.state_dict().items():
