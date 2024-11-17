@@ -1,7 +1,9 @@
 import torch
 import numpy as np 
 import torch.nn as nn
-from transformers.models.bert.modeling_bert import BertModel, BertLayer, BertSelfAttention, BaseModelOutputWithPoolingAndCrossAttentions, QuestionAnsweringModelOutput, BertForQuestionAnswering
+# from transformers.models.bert.modeling_bert import BertModel, BertLayer, BertSelfAttention, BaseModelOutputWithPoolingAndCrossAttentions, QuestionAnsweringModelOutput, BertForQuestionAnswering
+from BERT import BertModel
+from transformers.models.bert.modeling_bert import QuestionAnsweringModelOutput, BertForQuestionAnswering, BaseModelOutputWithPoolingAndCrossAttentions
 import math
 from typing import List, Optional, Tuple, Union
 import warnings
@@ -222,33 +224,34 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
 
 
 
-class RelProp(nn.Module):
-    def __init__(self):
-        super(RelProp, self).__init__()
-        # if not self.training:
-        self.register_forward_hook(forward_hook)
-    def gradprop(self, Z, X, S):
-        C = torch.autograd.grad(Z, X, S, retain_graph=True)
-        return C
-    def relprop(self, R, alpha):
-        return R
+# class RelProp(nn.Module):
+#     def __init__(self):
+#         super(RelProp, self).__init__()
+#         # if not self.training:
+#         self.register_forward_hook(forward_hook)
+#     def gradprop(self, Z, X, S):
+#         C = torch.autograd.grad(Z, X, S, retain_graph=True)
+#         return C
+#     def relprop(self, R, alpha):
+#         return R
     
-class Clone(RelProp):
-    def forward(self, input, num):
-        self.__setattr__('num', num)
-        outputs = []
-        for _ in range(num):
-            outputs.append(input)
-        return outputs
-    def relprop(self, R, alpha):
-        Z = []
-        for _ in range(self.num):
-            Z.append(self.X)
-        S = [safe_divide(r, z) for r, z in zip(R, Z)]
-        C = self.gradprop(Z, self.X, S)[0]
-        R = self.X * C
-        return R
-    
+# class Clone(RelProp):
+#     def forward(self, input, num):
+#         self.__setattr__('num', num)
+#         outputs = []
+#         for _ in range(num):
+#             outputs.append(input)
+#         return outputs
+#     def relprop(self, R, alpha):
+#         Z = []
+#         for _ in range(self.num):
+#             Z.append(self.X)
+#         S = [safe_divide(r, z) for r, z in zip(R, Z)]
+#         C = self.gradprop(Z, self.X, S)[0]
+#         R = self.X * C
+#         return R
+
+''' 
 class Attention(nn.Module):
 
     def __init__(self, config):
@@ -429,7 +432,7 @@ class Attention(nn.Module):
         cam = self.clone.relprop((cam1_1, cam1_2, cam2), **kwargs)
 
         return cam
-
+'''
 
 
 
@@ -480,7 +483,7 @@ class RegBert(BertModel):
         inputs_embeds: Optional[torch.Tensor] = None,
         encoder_hidden_states: Optional[torch.Tensor] = None,
         encoder_attention_mask: Optional[torch.Tensor] = None,
-        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        # past_key_values: Optional[List[torch.FloatTensor]] = None,
         use_cache: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
@@ -531,8 +534,8 @@ class RegBert(BertModel):
             head_mask=head_mask,
             encoder_hidden_states=encoder_hidden_states,
             encoder_attention_mask=encoder_extended_attention_mask,
-            past_key_values=past_key_values,
-            use_cache=use_cache,
+            # past_key_values=past_key_values,
+            # use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
@@ -547,10 +550,10 @@ class RegBert(BertModel):
         return BaseModelOutputWithPoolingAndCrossAttentions(
             last_hidden_state=sequence_output,
             pooler_output=pooled_output,
-            past_key_values=encoder_outputs.past_key_values,
+            # past_key_values=encoder_outputs.past_key_values,
             hidden_states=encoder_outputs.hidden_states,
             attentions=encoder_outputs.attentions,
-            cross_attentions=encoder_outputs.cross_attentions,
+            # cross_attentions=encoder_outputs.cross_attentions,
         )
         # return (
         #     sequence_output,
