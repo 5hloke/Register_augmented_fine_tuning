@@ -448,8 +448,9 @@ class RegBert(BertModel):
         super().__init__(config)
         self.num_registers = num_registers
         self.config = config
-        self.reg_tokens = nn.Parameter(torch.zeros(1, num_registers, 768))
-        self.reg_pos = nn.Parameter(torch.zeros(1, num_registers, 768))
+        if num_registers > 0: 
+            self.reg_tokens = nn.Parameter(torch.zeros(1, num_registers, 768))
+            self.reg_pos = nn.Parameter(torch.zeros(1, num_registers, 768))
         self.dev = dev
         trunc_normal_(self.reg_tokens, std=.02)
         trunc_normal_(self.reg_pos, std=.02)
@@ -504,9 +505,12 @@ class RegBert(BertModel):
         # Here are the positional embeddings + word embeddings + token type embeddings
         input_embeds = self.embeddings(input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds)
         # print("Forwarding")
-        register = self.reg_tokens.expand(batch_size, -1, -1)
-        register = torch.add(register, self.reg_pos)
-        embedding_output = torch.cat((register, input_embeds), dim=1)
+        if self.num_regsiters > 0: 
+            register = self.reg_tokens.expand(batch_size, -1, -1)
+            register = torch.add(register, self.reg_pos)
+            embedding_output = torch.cat((register, input_embeds), dim=1)
+        else:
+            embedding_output = input_embeds
 
         # use_sdpa_attention_masks = (
         #     self.attn_implementation == "sdpa"
@@ -522,7 +526,7 @@ class RegBert(BertModel):
             expanded_mask = mask[:, None, None, :].expand(batch, 1, target_length, key_length).to(self.dev)
             inverted_mask = 1.0 - expanded_mask
             return inverted_mask.masked_fill(inverted_mask.bool(), torch.finfo(dtype).min)
-        extended_attention_mask = prepare_mask(attention_mask, embedding_output.dtype, seq_length+50)
+        extended_attention_mask = prepare_mask(attention_mask, embedding_output.dtype, seq_length+self.num_registers)
         # print(extended_attention_mask.shape)
         encoder_extended_attention_mask = None
         head_mask = None
@@ -544,8 +548,8 @@ class RegBert(BertModel):
         sequence_output = encoder_outputs[0]
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
         # print(f"Return Dict: {return_dict}, seq = {sequence_output.shape}, pooled: {pooled_output.shape}")
-        if not return_dict:
-            return (sequence_output, pooled_output) + encoder_outputs[self.num_registers:]
+        # if not return_dict:
+        #     return (sequence_output, pooled_output) + encoder_outputs[self.num_registers:]
 
         return BaseModelOutputWithPoolingAndCrossAttentions(
             last_hidden_state=sequence_output,
