@@ -505,7 +505,7 @@ class RegBert(BertModel):
         # Here are the positional embeddings + word embeddings + token type embeddings
         input_embeds = self.embeddings(input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds)
         # print("Forwarding")
-        if self.num_regsiters > 0: 
+        if self.num_registers > 0: 
             register = self.reg_tokens.expand(batch_size, -1, -1)
             register = torch.add(register, self.reg_pos)
             embedding_output = torch.cat((register, input_embeds), dim=1)
