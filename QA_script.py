@@ -2,7 +2,7 @@ import json
 import random
 from datasets import Dataset
 import torch
-from transformers import AutoTokenizer, AutoModelForQuestionAnswering, DefaultDataCollator, TrainingArguments, Trainer
+from transformers import AutoTokenizer, AutoModelForQuestionAnswering, DefaultDataCollator, TrainingArguments, Trainer, BertConfig
 
 from model import RegBertForQA
 
@@ -29,7 +29,12 @@ device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("
 
 tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased') ## 
 # model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
-model= RegBertForQA.from_pretrained('bert-base-uncased')
+
+# m = RegBertForQA.from_pretrained('bert-base-uncased')
+
+# config = BertConfig.from_pretrained("bert-base-uncased")
+# model = RegBertForQA(config=config, num_registers=50)
+    
 
 
 S_lang2file = {
@@ -249,10 +254,19 @@ def compute_metrics(start_logits, end_logits, features, examples):
 
 
 
-def model_train(tr_data, te_data):
+def model_train(tr_data, te_data, num_registers):
     data_collator = DefaultDataCollator()
     # model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
-    model = RegBertForQA.from_pretrained("bert-base-uncased") ##
+    
+    # m = RegBertForQA.from_pretrained("bert-base-uncased") ##
+
+    print('from model_train(), num_reg=', num_registers)
+    
+    config = BertConfig.from_pretrained("bert-base-uncased")
+    model = RegBertForQA(config=config, num_registers=num_registers)
+
+    print('model.bert.num_registers=', model.bert.num_registers)
+    
     training_args = TrainingArguments(
         output_dir='QA_OP',
         evaluation_strategy="epoch",
@@ -360,23 +374,31 @@ def model_train(tr_data, te_data):
 
 ### MODEL TRAINING
 
-for S in S_lang2file.keys(): # S_lang2file.keys()
-    train_counter = 1
-    for T in T_lang2file.keys(): # T_lang2file.keys()
-        s_data = get_s_data(S,T,SHOT)
-        train_dataset = s_data.map(preprocess_training_examples, batched=True, remove_columns=s_data.column_names)
-        t_data = get_t_data(T)
-        validation_dataset = t_data.map(preprocess_validation_examples, batched=True, remove_columns=t_data.column_names)
-        if train_counter == 1:
-            trainer = model_train(train_dataset, validation_dataset)
-        train_counter = train_counter + 1
-        predictions, _, _ = trainer.predict(validation_dataset)
-        start_logits, end_logits = predictions
-        print('start_logits Pred: ',start_logits.shape)
-        f1 = compute_metrics(start_logits, end_logits, validation_dataset, t_data)
-        accuracy_dict[(S,T,SHOT)] = f1
+for num_registers in range(0, 101, 5):
+    for S in S_lang2file.keys(): # S_lang2file.keys()
+        train_counter = 1
+        for T in T_lang2file.keys(): # T_lang2file.keys()
+            s_data = get_s_data(S,T,SHOT)
+            train_dataset = s_data.map(preprocess_training_examples, batched=True, remove_columns=s_data.column_names)
+            t_data = get_t_data(T)
+            validation_dataset = t_data.map(preprocess_validation_examples, batched=True, remove_columns=t_data.column_names)
+            if train_counter == 1:
+                print('from train, num_reg=', num_registers)
+                save_path = f'model_num_reg_{num_registers}.pth'
+                trainer = model_train(train_dataset, validation_dataset, num_registers=num_registers)
+                torch.save(trainer.model.state_dict(), save_path)
+                print('model saved for num_reg = ', num_registers)
+                
+            train_counter = train_counter + 1
+            predictions, _, _ = trainer.predict(validation_dataset)
+            start_logits, end_logits = predictions
+            print('start_logits Pred: ',start_logits.shape)
+            f1 = compute_metrics(start_logits, end_logits, validation_dataset, t_data)
+            accuracy_dict[(S,T,SHOT)] = f1
 
-with open("Acc_QA.txt", "w") as fp:
-    print(accuracy_dict, file=fp)
+            file_name = f'Acc_QA_num_reg{num_registers}'
+            with open(file_name, "w") as fp:
+                print(accuracy_dict, file=fp)
+            print('accuracy saved for num_reg=', num_registers)
 
 ###

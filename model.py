@@ -1,7 +1,10 @@
 import torch
 import numpy as np 
 import torch.nn as nn
-from transformers.models.bert.modeling_bert import BertModel, BertLayer, BertSelfAttention, BaseModelOutputWithPoolingAndCrossAttentions, QuestionAnsweringModelOutput, BertForQuestionAnswering
+# from transformers.models.bert.modeling_bert import BertModel, BertLayer, BertSelfAttention, BaseModelOutputWithPoolingAndCrossAttentions, QuestionAnsweringModelOutput, BertForQuestionAnswering
+from BERT import BertModel
+from layers_ours import Linear ##
+from transformers.models.bert.modeling_bert import QuestionAnsweringModelOutput, BertForQuestionAnswering, BaseModelOutputWithPoolingAndCrossAttentions
 import math
 from typing import List, Optional, Tuple, Union
 import warnings
@@ -222,33 +225,34 @@ def trunc_normal_(tensor, mean=0., std=1., a=-2., b=2.):
 
 
 
-class RelProp(nn.Module):
-    def __init__(self):
-        super(RelProp, self).__init__()
-        # if not self.training:
-        self.register_forward_hook(forward_hook)
-    def gradprop(self, Z, X, S):
-        C = torch.autograd.grad(Z, X, S, retain_graph=True)
-        return C
-    def relprop(self, R, alpha):
-        return R
+# class RelProp(nn.Module):
+#     def __init__(self):
+#         super(RelProp, self).__init__()
+#         # if not self.training:
+#         self.register_forward_hook(forward_hook)
+#     def gradprop(self, Z, X, S):
+#         C = torch.autograd.grad(Z, X, S, retain_graph=True)
+#         return C
+#     def relprop(self, R, alpha):
+#         return R
     
-class Clone(RelProp):
-    def forward(self, input, num):
-        self.__setattr__('num', num)
-        outputs = []
-        for _ in range(num):
-            outputs.append(input)
-        return outputs
-    def relprop(self, R, alpha):
-        Z = []
-        for _ in range(self.num):
-            Z.append(self.X)
-        S = [safe_divide(r, z) for r, z in zip(R, Z)]
-        C = self.gradprop(Z, self.X, S)[0]
-        R = self.X * C
-        return R
-    
+# class Clone(RelProp):
+#     def forward(self, input, num):
+#         self.__setattr__('num', num)
+#         outputs = []
+#         for _ in range(num):
+#             outputs.append(input)
+#         return outputs
+#     def relprop(self, R, alpha):
+#         Z = []
+#         for _ in range(self.num):
+#             Z.append(self.X)
+#         S = [safe_divide(r, z) for r, z in zip(R, Z)]
+#         C = self.gradprop(Z, self.X, S)[0]
+#         R = self.X * C
+#         return R
+
+''' 
 class Attention(nn.Module):
 
     def __init__(self, config):
@@ -429,7 +433,7 @@ class Attention(nn.Module):
         cam = self.clone.relprop((cam1_1, cam1_2, cam2), **kwargs)
 
         return cam
-
+'''
 
 
 
@@ -440,17 +444,31 @@ class Attention(nn.Module):
 
 
 class RegBert(BertModel):
-    def __init__(self, config, num_registers=50, dev='mps'):
+    def __init__(self, config, num_registers=50, dev='cuda'):
         
         super().__init__(config)
         self.num_registers = num_registers
         self.config = config
-        self.reg_tokens = nn.Parameter(torch.zeros(1, num_registers, 768))
-        self.reg_pos = nn.Parameter(torch.zeros(1, num_registers, 768))
+        if num_registers > 0: 
+            self.reg_tokens = nn.Parameter(torch.zeros(1, num_registers, 768))
+            self.reg_pos = nn.Parameter(torch.zeros(1, num_registers, 768))
         self.dev = dev
         trunc_normal_(self.reg_tokens, std=.02)
         trunc_normal_(self.reg_pos, std=.02)
         # self.init_reg_weights()
+    
+    @classmethod
+    def from_pretrained(cls, pretrained_model_name_or_path, *model_args, num_registers=50, dev='cuda', **kwargs):
+        model = super().from_pretrained(pretrained_model_name_or_path, *model_args, **kwargs)
+        # Add the `num_registers` attribute and initialize register tokens
+        model.num_registers = num_registers
+        if num_registers > 0:
+            model.reg_tokens = nn.Parameter(torch.zeros(1, num_registers, model.config.hidden_size))
+            model.reg_pos = nn.Parameter(torch.zeros(1, num_registers, model.config.hidden_size))
+        model.dev = dev
+        trunc_normal_(model.reg_tokens, std=.02)
+        trunc_normal_(model.reg_pos, std=.02)
+        return model
         
     
     def init_reg_weights(self):
@@ -480,7 +498,7 @@ class RegBert(BertModel):
         inputs_embeds: Optional[torch.Tensor] = None,
         encoder_hidden_states: Optional[torch.Tensor] = None,
         encoder_attention_mask: Optional[torch.Tensor] = None,
-        past_key_values: Optional[List[torch.FloatTensor]] = None,
+        # past_key_values: Optional[List[torch.FloatTensor]] = None,
         use_cache: Optional[bool] = None,
         output_attentions: Optional[bool] = None,
         output_hidden_states: Optional[bool] = None,
@@ -501,9 +519,12 @@ class RegBert(BertModel):
         # Here are the positional embeddings + word embeddings + token type embeddings
         input_embeds = self.embeddings(input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds)
         # print("Forwarding")
-        register = self.reg_tokens.expand(batch_size, -1, -1)
-        register = torch.add(register, self.reg_pos)
-        embedding_output = torch.cat((register, input_embeds), dim=1)
+        if self.num_registers > 0: 
+            register = self.reg_tokens.expand(batch_size, -1, -1)
+            register = torch.add(register, self.reg_pos)
+            embedding_output = torch.cat((register, input_embeds), dim=1)
+        else:
+            embedding_output = input_embeds
 
         # use_sdpa_attention_masks = (
         #     self.attn_implementation == "sdpa"
@@ -519,7 +540,7 @@ class RegBert(BertModel):
             expanded_mask = mask[:, None, None, :].expand(batch, 1, target_length, key_length).to(self.dev)
             inverted_mask = 1.0 - expanded_mask
             return inverted_mask.masked_fill(inverted_mask.bool(), torch.finfo(dtype).min)
-        extended_attention_mask = prepare_mask(attention_mask, embedding_output.dtype, seq_length+50)
+        extended_attention_mask = prepare_mask(attention_mask, embedding_output.dtype, seq_length+self.num_registers)
         # print(extended_attention_mask.shape)
         encoder_extended_attention_mask = None
         head_mask = None
@@ -531,8 +552,8 @@ class RegBert(BertModel):
             head_mask=head_mask,
             encoder_hidden_states=encoder_hidden_states,
             encoder_attention_mask=encoder_extended_attention_mask,
-            past_key_values=past_key_values,
-            use_cache=use_cache,
+            # past_key_values=past_key_values,
+            # use_cache=use_cache,
             output_attentions=output_attentions,
             output_hidden_states=output_hidden_states,
             return_dict=return_dict,
@@ -541,16 +562,16 @@ class RegBert(BertModel):
         sequence_output = encoder_outputs[0]
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
         # print(f"Return Dict: {return_dict}, seq = {sequence_output.shape}, pooled: {pooled_output.shape}")
-        if not return_dict:
-            return (sequence_output, pooled_output) + encoder_outputs[self.num_registers:]
+        # if not return_dict:
+        #     return (sequence_output, pooled_output) + encoder_outputs[self.num_registers:]
 
         return BaseModelOutputWithPoolingAndCrossAttentions(
             last_hidden_state=sequence_output,
             pooler_output=pooled_output,
-            past_key_values=encoder_outputs.past_key_values,
+            # past_key_values=encoder_outputs.past_key_values,
             hidden_states=encoder_outputs.hidden_states,
             attentions=encoder_outputs.attentions,
-            cross_attentions=encoder_outputs.cross_attentions,
+            # cross_attentions=encoder_outputs.cross_attentions,
         )
         # return (
         #     sequence_output,
@@ -566,13 +587,15 @@ class RegBert(BertModel):
 
 class RegBertForQA(BertForQuestionAnswering):
 
-    def __init__(self, config):
+    def __init__(self, config, num_registers=50):
         super().__init__(config)
         self.num_labels = config.num_labels
 
         # self.bert = RegBert(config)
-        self.bert = RegBert.from_pretrained('bert-base-uncased')
-        self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
+        print('from regbertfor QA, num_reg=', num_registers)
+        self.bert = RegBert.from_pretrained('bert-base-uncased', num_registers=num_registers)
+        # self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
+        self.qa_outputs = Linear(config.hidden_size, config.num_labels)
 
         # Initialize weights and apply final processing
         self.post_init() ####### Do we need this??
@@ -661,6 +684,13 @@ class RegBertForQA(BertForQuestionAnswering):
             attentions=outputs.attentions,
         )
 
+
+    def relprop(self, cam=None, **kwargs):
+        cam = self.qa_outputs.relprop(cam, **kwargs)
+        # cam = self.dropout.relprop(cam, **kwargs)
+        cam = self.bert.relprop(cam, **kwargs)
+        # print("conservation: ", cam.sum())
+        return cam
 
 
 
