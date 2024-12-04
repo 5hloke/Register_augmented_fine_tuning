@@ -14,6 +14,7 @@ from collections import Counter
 from nltk.util import ngrams
 from scipy.spatial.distance import jensenshannon
 import warnings
+import gc
 warnings.filterwarnings("ignore")
 
 def set_seed(seed):
@@ -254,16 +255,13 @@ def compute_metrics(start_logits, end_logits, features, examples):
 
 
 
-def model_train(tr_data, te_data, num_registers):
+def model_train(tr_data, te_data, num_registers, config = None, model = None):
     data_collator = DefaultDataCollator()
     # model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
     
     # m = RegBertForQA.from_pretrained("bert-base-uncased") ##
 
     print('from model_train(), num_reg=', num_registers)
-    
-    config = BertConfig.from_pretrained("bert-base-uncased")
-    model = RegBertForQA(config=config, num_registers=num_registers)
 
     print('model.bert.num_registers=', model.bert.num_registers)
     
@@ -373,8 +371,9 @@ def model_train(tr_data, te_data, num_registers):
 # ### LM Feature ENDS
 
 ### MODEL TRAINING
-
+config = BertConfig.from_pretrained("bert-base-uncased")
 for num_registers in range(0, 101, 5):
+    model = RegBertForQA(config=config, num_registers=num_registers)
     for S in S_lang2file.keys(): # S_lang2file.keys()
         train_counter = 1
         for T in T_lang2file.keys(): # T_lang2file.keys()
@@ -385,7 +384,7 @@ for num_registers in range(0, 101, 5):
             if train_counter == 1:
                 print('from train, num_reg=', num_registers)
                 save_path = f'model_num_reg_{num_registers}.pth'
-                trainer = model_train(train_dataset, validation_dataset, num_registers=num_registers)
+                trainer = model_train(train_dataset, validation_dataset, num_registers=num_registers, model = model)
                 torch.save(trainer.model.state_dict(), save_path)
                 print('model saved for num_reg = ', num_registers)
                 
@@ -400,5 +399,7 @@ for num_registers in range(0, 101, 5):
             with open(file_name, "w") as fp:
                 print(accuracy_dict, file=fp)
             print('accuracy saved for num_reg=', num_registers)
+            gc.collect()
+            torch.cuda.empty_cache()
 
 ###
