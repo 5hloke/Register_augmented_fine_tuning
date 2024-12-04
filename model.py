@@ -596,7 +596,7 @@ class RegBertForQA(BertForQuestionAnswering):
         self.bert = RegBert.from_pretrained('bert-base-uncased', num_registers=num_registers)
         # self.qa_outputs = nn.Linear(config.hidden_size, config.num_labels)
         self.qa_outputs = Linear(config.hidden_size, config.num_labels)
-
+        self._logits = []
         # Initialize weights and apply final processing
         self.post_init() ####### Do we need this??
 
@@ -641,6 +641,7 @@ class RegBertForQA(BertForQuestionAnswering):
         # print('outputs[0]',outputs[0].shape)
 
         sequence_output = outputs[0]
+        self._logits.append(sequence_output)
 
         logits = self.qa_outputs(sequence_output)
         # print('logits: ',logits.shape)
