@@ -27,7 +27,7 @@ def set_seed(seed):
 SEED = 595
 set_seed(SEED)
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
-
+print(device)
 tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased') ## 
 # model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
 
