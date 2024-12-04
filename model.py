@@ -267,8 +267,8 @@ class RegBertForQA(BertForQuestionAnswering):
         start_logits = start_logits.squeeze(-1).contiguous()
         end_logits = end_logits.squeeze(-1).contiguous()
 
-        start_logits = start_logits[:, self.bert.num_registers:]
-        end_logits = end_logits[:, self.bert.num_registers:]
+        # start_logits = start_logits[:, self.bert.num_registers:]
+        # end_logits = end_logits[:, self.bert.num_registers:]
 
         # print('start_logits: ',start_logits.shape)
         # print('end_logits: ', end_logits.shape)
