@@ -374,7 +374,7 @@ def model_train(tr_data, te_data, num_registers, config = None, model = None):
 
 ### MODEL TRAINING
 config = BertConfig.from_pretrained("bert-base-uncased")
-num_registers = sys.argv[1]
+num_registers = int(sys.argv[1])
 model = RegBertForQA(config=config, num_registers=num_registers)
 for S in S_lang2file.keys(): # S_lang2file.keys()
     train_counter = 1
