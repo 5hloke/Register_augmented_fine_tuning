@@ -16,6 +16,7 @@ from scipy.spatial.distance import jensenshannon
 import warnings
 import gc
 warnings.filterwarnings("ignore")
+import sys
 
 def set_seed(seed):
     random.seed(seed)
@@ -29,6 +30,7 @@ set_seed(SEED)
 device = torch.device("cuda:0") if torch.cuda.is_available() else torch.device("cpu")
 print(device)
 tokenizer = AutoTokenizer.from_pretrained('bert-base-uncased') ## 
+
 # model = AutoModelForQuestionAnswering.from_pretrained("bert-base-uncased") ##
 
 # m = RegBertForQA.from_pretrained('bert-base-uncased')
@@ -372,34 +374,36 @@ def model_train(tr_data, te_data, num_registers, config = None, model = None):
 
 ### MODEL TRAINING
 config = BertConfig.from_pretrained("bert-base-uncased")
-for num_registers in range(20, 101, 5):
-    model = RegBertForQA(config=config, num_registers=num_registers)
-    for S in S_lang2file.keys(): # S_lang2file.keys()
-        train_counter = 1
-        for T in T_lang2file.keys(): # T_lang2file.keys()
-            s_data = get_s_data(S,T,SHOT)
-            train_dataset = s_data.map(preprocess_training_examples, batched=True, remove_columns=s_data.column_names)
-            t_data = get_t_data(T)
-            validation_dataset = t_data.map(preprocess_validation_examples, batched=True, remove_columns=t_data.column_names)
-            if train_counter == 1:
-                print('from train, num_reg=', num_registers)
-                save_path = f'model_num_reg_{num_registers}.pth'
-                trainer = model_train(train_dataset, validation_dataset, num_registers=num_registers, model = model)
-                torch.save(trainer.model.state_dict(), save_path)
-                print('model saved for num_reg = ', num_registers)
-                
-            train_counter = train_counter + 1
-            predictions, _, _ = trainer.predict(validation_dataset)
-            start_logits, end_logits = predictions
-            print('start_logits Pred: ',start_logits.shape)
-            f1 = compute_metrics(start_logits, end_logits, validation_dataset, t_data)
-            accuracy_dict[(S,T,SHOT)] = f1
+num_registers = sys.argv[1]
+model = RegBertForQA(config=config, num_registers=num_registers)
+for S in S_lang2file.keys(): # S_lang2file.keys()
+    train_counter = 1
+    for T in T_lang2file.keys(): # T_lang2file.keys()
+        s_data = get_s_data(S,T,SHOT)
+        train_dataset = s_data.map(preprocess_training_examples, batched=True, remove_columns=s_data.column_names)
+        t_data = get_t_data(T)
+        validation_dataset = t_data.map(preprocess_validation_examples, batched=True, remove_columns=t_data.column_names)
+        if train_counter == 1:
+            print('from train, num_reg=', num_registers)
+            save_path = f'model_num_reg_{num_registers}.pth'
+            trainer = model_train(train_dataset, validation_dataset, num_registers=num_registers, model = model)
+            torch.save(trainer.model.state_dict(), save_path)
+            trainer.save_model(f"model_num_reg_{num_registers}")
+            tokenizer.save_pretrained(f"model_num_reg_{num_registers}")
+            print('model saved for num_reg = ', num_registers)
+            
+        train_counter = train_counter + 1
+        predictions, _, _ = trainer.predict(validation_dataset)
+        start_logits, end_logits = predictions
+        print('start_logits Pred: ',start_logits.shape)
+        f1 = compute_metrics(start_logits, end_logits, validation_dataset, t_data)
+        accuracy_dict[(S,T,SHOT)] = f1
 
-            file_name = f'Acc_QA_num_reg{num_registers}'
-            with open(file_name, "w") as fp:
-                print(accuracy_dict, file=fp)
-            print('accuracy saved for num_reg=', num_registers)
-            gc.collect()
-            torch.cuda.empty_cache()
+        file_name = f'Acc_QA_num_reg{num_registers}'
+        with open(file_name, "w") as fp:
+            print(accuracy_dict, file=fp)
+        print('accuracy saved for num_reg=', num_registers)
+        gc.collect()
+        torch.cuda.empty_cache()
 
 ###
