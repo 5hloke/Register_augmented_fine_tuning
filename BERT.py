@@ -167,7 +167,7 @@ class BertPooler(nn.Module):
         super().__init__()
         self.dense = Linear(config.hidden_size, config.hidden_size)
         self.activation = Tanh()
-        # self.pool = IndexSelect()
+        self.pool = IndexSelect() ######
 
     def forward(self, hidden_states):
         # We "pool" the model by simply taking the hidden state corresponding
@@ -188,7 +188,7 @@ class BertPooler(nn.Module):
         cam = self.dense.relprop(cam, **kwargs)
         #print(cam.sum())
         cam = cam.unsqueeze(1)
-        # cam = self.pool.relprop(cam, **kwargs)
+        cam = self.pool.relprop(cam, **kwargs) ######
         #print(cam.sum())
 
         return cam
