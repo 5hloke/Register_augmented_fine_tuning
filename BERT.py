@@ -65,6 +65,9 @@ class BertEmbeddings(nn.Module):
             input_shape = inputs_embeds.size()[:-1]
 
         seq_length = input_shape[1]
+        print(f"input_shape: {input_shape}")
+        print(f"Position_ids: {self.position_ids}")
+        
 
         if position_ids is None:
             position_ids = self.position_ids[:, :seq_length]
@@ -76,7 +79,7 @@ class BertEmbeddings(nn.Module):
             inputs_embeds = self.word_embeddings(input_ids)
         position_embeddings = self.position_embeddings(position_ids)
         token_type_embeddings = self.token_type_embeddings(token_type_ids)
-
+        print(token_type_embeddings.shape, position_embeddings.shape)
         # embeddings = inputs_embeds + position_embeddings + token_type_embeddings
         embeddings = self.add1([token_type_embeddings, position_embeddings])
         embeddings = self.add2([embeddings, inputs_embeds])
@@ -185,7 +188,7 @@ class BertPooler(nn.Module):
         cam = self.dense.relprop(cam, **kwargs)
         #print(cam.sum())
         cam = cam.unsqueeze(1)
-        cam = self.pool.relprop(cam, **kwargs)
+        # cam = self.pool.relprop(cam, **kwargs)
         #print(cam.sum())
 
         return cam

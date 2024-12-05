@@ -131,7 +131,7 @@ class RegBert(BertModel):
                 buffered_token_type_ids_expanded = buffered_token_type_ids.expand(batch_size, seq_length)
                 token_type_ids = buffered_token_type_ids_expanded
             else:
-                token_type_ids = torch.zeros(input_shape, dtype=torch.long, dev=self.dev)
+                token_type_ids = torch.zeros(input_shape, dtype=torch.long, device=self.dev)
         
         # Here are the positional embeddings + word embeddings + token type embeddings
         input_embeds = self.embeddings(input_ids=input_ids, position_ids=position_ids, token_type_ids=token_type_ids, inputs_embeds=inputs_embeds)
@@ -305,7 +305,7 @@ class RegBertForQA(BertForQuestionAnswering):
 
 
     def relprop(self, cam=None, **kwargs):
-        cam = self.qa_outputs.relprop(cam, **kwargs)
+        # cam = self.qa_outputs.relprop(cam, **kwargs)
         # cam = self.dropout.relprop(cam, **kwargs)
         cam = self.bert.relprop(cam, **kwargs)
         # print("conservation: ", cam.sum())
