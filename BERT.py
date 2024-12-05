@@ -174,12 +174,12 @@ class BertPooler(nn.Module):
         # to the first token.
         self._seq_size = hidden_states.shape[1]
 
-        # first_token_tensor = hidden_states[:, 0]
-        # first_token_tensor = self.pool(hidden_states, 1, torch.tensor(0, device=hidden_states.device))
-        # first_token_tensor = first_token_tensor.squeeze(1)
-        first_token_tensor = hidden_states[:, 0]
+        
+        first_token_tensor = self.pool(hidden_states, 1, torch.tensor(0, device=hidden_states.device))
+        first_token_tensor = first_token_tensor.squeeze(1)
         pooled_output = self.dense(first_token_tensor)
         pooled_output = self.activation(pooled_output)
+
         return pooled_output
 
     def relprop(self, cam, **kwargs):
