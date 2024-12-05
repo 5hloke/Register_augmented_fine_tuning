@@ -389,7 +389,7 @@ for S in S_lang2file.keys(): # S_lang2file.keys()
             trainer = model_train(train_dataset, validation_dataset, num_registers=num_registers, model = model)
             #torch.save(trainer.model.state_dict(), save_path)
             trainer.save_model(f"model_num_reg_{num_registers}")
-            tokenizer.save_pretrained(f"model_num_reg_{num_registers}")
+            tokenizer.save_pretrained(f"tokenizer_num_reg_{num_registers}")
             print('model saved for num_reg = ', num_registers)
             
         train_counter = train_counter + 1
