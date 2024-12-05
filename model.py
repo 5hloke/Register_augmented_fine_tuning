@@ -258,7 +258,6 @@ class RegBertForQA(BertForQuestionAnswering):
         # print('outputs[0]',outputs[0].shape)
 
         sequence_output = outputs[0]
-        # sequence_output = sequence_output[:, self.bert.num_registers:, :]
         self._logits.append(sequence_output)
 
         logits = self.qa_outputs(sequence_output)
