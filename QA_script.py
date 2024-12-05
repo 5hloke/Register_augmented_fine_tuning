@@ -385,9 +385,9 @@ for S in S_lang2file.keys(): # S_lang2file.keys()
         validation_dataset = t_data.map(preprocess_validation_examples, batched=True, remove_columns=t_data.column_names)
         if train_counter == 1:
             print('from train, num_reg=', num_registers)
-            save_path = f'model_num_reg_{num_registers}.pth'
+            #save_path = f'model_num_reg_{num_registers}.pth'
             trainer = model_train(train_dataset, validation_dataset, num_registers=num_registers, model = model)
-            torch.save(trainer.model.state_dict(), save_path)
+            #torch.save(trainer.model.state_dict(), save_path)
             trainer.save_model(f"model_num_reg_{num_registers}")
             tokenizer.save_pretrained(f"model_num_reg_{num_registers}")
             print('model saved for num_reg = ', num_registers)
