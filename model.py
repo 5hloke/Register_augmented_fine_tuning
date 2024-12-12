@@ -143,13 +143,6 @@ class RegBert(BertModel):
         else:
             embedding_output = input_embeds
 
-        # use_sdpa_attention_masks = (
-        #     self.attn_implementation == "sdpa"
-        #     and self.position_embedding_type == "absolute"
-        #     and head_mask is None
-        #     and not output_attentions
-        # ) 
-
         #prepare 4D attention mask if needed
         def prepare_mask(mask, dtype, target_length):
             batch, key_length = mask.shape 
@@ -178,9 +171,6 @@ class RegBert(BertModel):
         
         sequence_output = encoder_outputs[0]
         pooled_output = self.pooler(sequence_output) if self.pooler is not None else None
-        # print(f"Return Dict: {return_dict}, seq = {sequence_output.shape}, pooled: {pooled_output.shape}")
-        # if not return_dict:
-        #     return (sequence_output, pooled_output) + encoder_outputs[self.num_registers:]
 
         return BaseModelOutputWithPoolingAndCrossAttentions(
             last_hidden_state=sequence_output,
@@ -190,17 +180,6 @@ class RegBert(BertModel):
             attentions=encoder_outputs.attentions,
             # cross_attentions=encoder_outputs.cross_attentions,
         )
-        # return (
-        #     sequence_output,
-        #     pooled_output,
-        #     encoder_outputs.past_key_values,
-        #     encoder_outputs.hidden_states,
-        #     encoder_outputs.attentions,
-        #     encoder_outputs.cross_attentions,
-        # )
-
-        
-
 
 class RegBertForQA(BertForQuestionAnswering):
 
@@ -311,16 +290,6 @@ class RegBertForQA(BertForQuestionAnswering):
         return cam
 
 
-
-    
-            
-
-
-
-
-
-
-    
 # model = RegBert.from_pretrained('bert-base-uncased')
 # model.init_reg_weights()
 # print(model.config)
